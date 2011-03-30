@@ -1,0 +1,260 @@
+---
+- name: "001/1: Search for non existing user without correct OAuth sig should fail"
+  request:
+    headers:
+      Content-Type: 'application/json'
+      Accept:       'application/json'
+    path:           '/users/0815471169'
+    method:         'GET'
+    body:
+  response_expectation:
+    status_code:    401
+    headers:
+      Last-Modified:    /.*/
+    body:
+- name: "001/2: Search for non existing user with correct OAuth sig should return a 204"
+  request:
+    headers:
+      Content-Type: 'application/json'
+      Accept:       'application/json'
+    path:           '/users/0815471169'
+    method:         'GET'
+    body:
+    oauth:          true
+  response_expectation:
+    status_code: 204
+    headers:
+      Last-Modified:    /.*/
+    body:
+- name: "001/3: Creating a guest user with POST parameters should succeed with a 201"
+  request:
+    headers:
+      Accept:       'application/json'
+    path:           '/users'
+    method:         'POST'
+    parameters:
+      id:           '08154711'
+    body:
+    oauth:          true
+  response_expectation:
+    status_code: 201
+    headers:
+      Last-Modified:    /.*/
+    body:
+- name: "001/4: Creating a guest user with JSON parameters should succeed with a 201"
+  request:
+    headers:
+      Content-Type: 'application/json'
+      Accept:       'application/json'
+    path:           '/users'
+    method:         'POST'
+    body:
+      id:           '08154712'
+    oauth:          true
+  response_expectation:
+    status_code: 201
+    headers:
+      Last-Modified:    /.*/
+    body:
+- name: "001/5: Creating a guest user with JSON parameters without OAuth should result in a 401"
+  request:
+    headers:
+      Content-Type: 'application/json'
+      Accept:       'application/json'
+    path:           '/users'
+    method:         'POST'
+    body:
+      id:           '08154713'
+  response_expectation:
+    status_code: 401
+    headers:
+      Last-Modified:    /.*/
+    body:
+- name: "001/6: Search for previously created user with correct OAuth sig should return the user"
+  request:
+    headers:
+      Content-Type: 'application/json'
+      Accept:       'application/json'
+    path:           '/users/08154712'
+    method:         'GET'
+    body:
+    oauth:          true
+  response_expectation:
+    status_code: 200
+    headers:
+      Last-Modified:    /.*/
+    body:
+      version:      'v5'
+      content:
+        user:
+          vz_id:    '08154712'
+          username: /^Guest_.*$/
+          guest:    true
+- name: "001/7: Recreating a guest user with POST parameters should fail in case the user already exists"
+  request:
+    headers:
+      Accept:       'application/json'
+    path:           '/users'
+    method:         'POST'
+    parameters:
+      id:           '08154712'
+    body:
+    oauth:          true
+  response_expectation:
+    status_code: 422
+    headers:
+      Last-Modified:    /.*/
+    body:
+- name: "001/8: Recreating a guest user with JSON parameters should fail in case the user already exists"
+  request:
+    headers:
+      Content-Type: 'application/json'
+      Accept:       'application/json'
+    path:           '/users'
+    method:         'POST'
+    body:
+      id:           '08154712'
+    oauth:          true
+  response_expectation:
+    status_code: 422
+    headers:
+      Last-Modified:    /.*/
+    body:
+- name: "001/9: Updating a guest user via PUT parameters should succeed"
+  priority:         5
+  request:
+    headers:
+      Accept:       'application/json'
+    path:           '/users/08154712'
+    method:         'PUT'
+    parameters:
+      access_token: 'vz_t0k3n'
+    body:
+    oauth:          true
+  response_expectation:
+    status_code: 201
+    headers:
+      Last-Modified:    /.*/
+    body:
+      version:      'v5'
+      content:
+        user:
+          vz_id:    '08154712'
+          username: /^Guest_.*$/
+          guest:    true
+- name: "001/10: Updating a guest user via JSON should succeed"
+  request:
+    headers:
+      Content-Type: 'application/json'
+      Accept:       'application/json'
+    path:           '/users/08154712'
+    method:         'PUT'
+    body:
+      id:           '08154712'
+      access_token: 'vz_t0k3n'
+    oauth:          true
+  response_expectation:
+    status_code: 201
+    headers:
+      Last-Modified:    /.*/
+    body:
+      version:      'v5'
+      content:
+        user:
+          vz_id:    '08154712'
+          username: /^Guest_.*$/
+          guest:    true
+- name: "001/11: Updating a guest user via PUT parameters without valid OAuth sig should fail"
+  request:
+    headers:
+      Accept:       'application/json'
+    path:           '/users/08154712'
+    method:         'PUT'
+    parameters:
+      id:           '08154712'
+      access_token: 'vz_t0k3n'
+    body:
+  response_expectation:
+    status_code: 401
+    headers:
+      Last-Modified:    /.*/
+    body:
+- name: "001/12: Updating a guest user via JSON without valid OAuth sig should fail"
+  request:
+    headers:
+      Content-Type: 'application/json'
+      Accept:       'application/json'
+    path:           '/users/08154712'
+    method:         'PUT'
+    body:
+      id:           '08154712'
+      access_token: 'vz_t0k3n'
+  response_expectation:
+    status_code: 401
+    headers:
+      Last-Modified:    /.*/
+    body:
+- name: "001/13: Updating a guest user via PUT parameters with invalid parameters should fail"
+  request:
+    headers:
+      Accept:       'application/json'
+    path:           '/users/08154712'
+    method:         'PUT'
+    parameters:
+      user:
+        username:   'duffyduck'
+    body:
+    oauth:          true
+  response_expectation:
+    status_code: 422
+    headers:
+      Last-Modified:    /.*/
+    body:
+- name: "001/14: Updating a guest user via JSON without valid OAuth sig should fail"
+  request:
+    headers:
+      Content-Type: 'application/json'
+      Accept:       'application/json'
+    path:           '/users/08154712'
+    method:         'PUT'
+    body:
+      user:
+        username:   'duffyduck'
+    oauth:          true
+  response_expectation:
+    status_code: 422
+    headers:
+      Last-Modified:    /.*/
+    body:
+- name: "001/15: Updating a guest user via PUT parameters with invalid user_id should fail with 404"
+  request:
+    headers:
+      Accept:       'application/json'
+    path:           '/users/08154799'
+    method:         'PUT'
+    parameters:
+      user:
+        username:   'duffyduck'
+    body:
+    oauth:          true
+  response_expectation:
+    status_code: 404
+    headers:
+      Last-Modified:    /.*/
+    body:
+- name: "001/16: Updating a guest user via JSON with invalid user_id should fail with 404"
+  request:
+    headers:
+      Content-Type: 'application/json'
+      Accept:       'application/json'
+    path:           '/users/08154799'
+    method:         'PUT'
+    body:
+      user:
+        username:   'duffyduck'
+    oauth:          true
+  response_expectation:
+    status_code: 404
+    headers:
+      Last-Modified:    /.*/
+    body:

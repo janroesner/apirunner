@@ -1,0 +1,480 @@
+= apirunner
+
+*apirunner* let's you test your _JSON_ _API_ from the outside. Sometimes model-, controller and routing-test's are not enough, you want to send requests to your application and validate the response in ganular detail? Then apirunner will be your best friend.
+
+apirunner is no replacement to rspec or cucumber tests, nor does it replace webrat or capable tools like that. It's an addition that lets you query you API, specify your queries in detail, parse the expected response code, message, header and body and compare all (or any) of 'em to your expectation, as well as check and document every testcases performance.
+
+The request and expectation can (and have to be) written down in easily createable YAML Files. The provided expectation matchers can match strings, integers and regular expressions. So apirunner provides you with a simple but powerful tool to examine your api's bugs.
+
+apirunner was initially developed for testing of the mighty (m8ty) i18n recommendation engine showcase of moviepilot.com (http://www.moviepilot.com) and extracted and gem'ified afterwards.
+
+== Capabilities
+
+*apirunner* *can*:
+
+* be configured for as many environemnts as you wish (your local machine, you staging environment, your production boxes, your wifes handbag)
+* send GET, POST, PUT and DELETE requests via HTTP and HTTPS
+* wait arbitrary but well specified amount of time before sending a request
+* read as many testcases as you wish from YAML files and execute them in the order of file appearance
+* generate iterational testcases at runtime (for mass/performance tests)
+* read more then one testcase from a file
+* match the response code's of your applications responses
+* match the syntactical correctness of the response format (as long as it is JSON)
+* proof the occurance and match the content of your app's HTTP headers
+* inspect certain caching related header values and validate max-age and sweep times (Varnish)
+* proof the occurence and match the content of your app's body (as long as it responds JSON)
+* optionally match only parts of header / body (you dont have to specify them in more detail than you are interested in)
+* exclude certain value test's from certain environments (by reading excludes from excludes.yml)
+* build several priority layers, so that you can run only parts of your testspec
+* provide you with some nice feedback at the console .... yeah sexy dots (".") and fancy F's ("F") ....
+* print out a nice error report (that you as a awesome ruby coder will never see)
+* print out a nice success report if you wish
+* print out equivalent curl commands for every request
+* measure the performance of your api from the outsite (no concurrency provided today, sry)
+* print out a nice performance report
+* substitute defined resource names of you testcases (resource namespacing) so that several testruns on the same box dont interfere (Hudson vs. developer)
+* be invoked from within rake to generate some example configuration and testcase files
+* be integrated into Hudson or any other CI system that accepts external tasks
+* be invoked with several environment keywords for more granular control over you testcases execution
+* write continious CSV logfiles with performance data of every request sent in every run of your testcase
+* be invoked also from within rake to run your test's
+* be extended by additional plugins that check certain behaviour of your api that apirunner does'nt check today
+* not travel to Ibiza
+
+== Installation
+
+Rails3:
+
+  gem install apirunner
+
+Rails2:
+
+  script/plugin install git://github.com/janroesner/apirunner.git
+
+== Prerequisites
+
+Until today apirunner runs only in connection with a rails application itself. In the future it (hopefully) will be able to run even isolated without a Rails environment. Releases of Rails prior to 3.0.0.rc are untested and will likely fail. Please don't blame the author but submit you patches.
+
+== Invocation
+
+Assuming you defined your environments as seen in the following section "Configuration", apirunner provides you with the following rake tasks:
+
+  rake -T api
+
+should result in:
+
+  rake api:performance:local       # runs a series of nessecary api calls for performance measuring and parses their response in environment local
+  rake api:performance:production  # runs a series of nessecary api calls for performance measuring and parses their response in environment production
+  rake api:performance:staging     # runs a series of nessecary api calls for performance measuring and parses their response in environment staging
+  rake api:run:local               # runs a series of nessecary api calls and parses their response in environment local
+  rake api:run:production          # runs a series of nessecary api calls and parses their response in environment production
+  rake api:run:staging             # runs a series of nessecary api calls and parses their response in environment staging
+  rake api:scaffold                # generates configuration and a skeleton for apirunner tests as well as excludes
+
+Tasks are selfexeplaining so far ...
+
+== Configuration
+
+  rake api::scaffold
+
+The latter one generates a starter configuration file in your config directory:
+
+  config/api_runner.yml
+
+Additionally there will be some example testcases which can be found in:
+
+  test/apirunner/001_create_user.yml
+  test/apirunner/002_update_resources.yml
+  test/apirunner/003_update_ratings.yml
+  test/apirunner/004_update_series_ratings.yml
+  test/apirunner/005_rateables_and_pagination.yml
+  test/apirunner/006_recommendations.yml
+  test/apirunner/007_item_predictions.yml
+  test/apirunner/008_discovery.yml
+  test/apirunner/010_fsk.yml
+  test/apirunner/011_misc.yml
+  test/apirunner/012_telekom_performance_tests.yml
+  test/apirunner/013_telekom_test_data_expectation.yml
+  test/apirunner/014-extended-unpersonalized-discovery.yml
+  test/apirunner/015-extended-personalized-discovery.yml
+  test/apirunner/016_create_10000_users.yml
+  test/apirunner/100_basic_varnish_tests.yml
+  test/apirunner/101_user_cache_update_and_delete_tests.yml
+  test/apirunner/102_user_cache_recommendations.yml
+  test/apirunner/103_user_chache_predictions.yml
+  test/apirunner/104_user_cache_discovery.yml
+  test/apirunner/105_test_discovery_caching.yml
+  test/apirunner/999_delete_user.yml
+  test/apirunner/excludes.yml
+
+
+These testcases are specific to recent requirements regarding the moviepilot API but can be helpful to understand, how the YAML expectation files have to be created.
+
+At first take some time and change config/api_runner.yml to your needs. You might for example want to test your app locally on localhost:3000, on staging machine and on production environment too. So your api_runner.yml could look like that:
+
+  local:
+    protocol: http
+    host: localhost
+    port: 3000
+    namespace: api1v0
+  staging:
+    protocol: http
+    host: staging.moviepilot.com
+    port: 80
+    namespace: api1v0
+  production:
+    protocol: http
+    host: production.moviepilot.com
+    port: 80
+    namespace: api1v0
+  general:
+    verbosity:
+      - verbose_on_error
+      - verbose_on_success
+      - rspec
+      - performance
+      - verbose_with_curl
+    priority: 0
+    substitution:
+      substitutes:
+        - duffybasic
+        - daisyduck
+        - duffyduck
+        - duffyduck2
+        - duffyduck3
+        - duffydad
+        - duffykid
+        - roadrunner
+        - teletubby
+        - luckyluke
+        - wileecoyote
+      prefix: abc_
+    csv_mode:
+      - append
+      - create
+      - none
+
+The configuration options above need some explanation (uuuuugh) but have to follow the YAML standard, so BE CAREFUL(!) about proper indentation (two spaces).
+
+== Environments
+
+So far you can define as many environments as you would like to query. The example above specifies 3 of them [:local, :staging, :production].
+
+You can specify a :protocol, :host, :port as well as a (URL) :namespace per environment. The namespace option is mandatory, so you can omit it. We introduced it, so we can support different versions of our api at the same time and question different versions on different boxes with one setup.
+
+The option makes the expectation matcher build ressource URI's like so:
+
+  http://localhost:3000/api1v0
+  http://staging.moviepilot.com/api1v0
+  http://production.moviepilot.com/api1v0
+
+The ressource pathes are simply appended before the request is sent.
+
+== Generals
+
+Every option that is not realted to a certain environment has to be mentioned in the generals section. As it can be seen in the example above there are few of them.
+
+*Verbosity* - apirunner has 5 verbosity modes. The first one that is found after the *verboosity* keyword is used. The others are here only fpr documentation purpose.
+
+  general:
+    verbosity:
+      - verbose_on_error
+      - verbose_on_success
+      - rspec
+      - performance
+
+*verbose_on_error* - prints out detailed testcase information in case of an error
+*verbose_on_sccess* - prints out detailed testcase information for every testcase, even if there was no error at all
+*rspec* - you will see only dots and F's as you know it from rspec tests
+*performance* - prints out a stripped down performance report for every testcase that was run
+
+== Executing only selected test cases
+It is possible to only execute several selected tests of a test suite by setting the environment variable to a list of regular expression that are matched against the file names of tests.
+
+  ONLY=001,011,update rake api:run:production
+
+would run all test files in
+
+  test/apirunner/*
+
+whose file name would match the regular expression:
+
+  /(001|011|update)/
+
+== Curl Output
+When trying to debug errors, it can be very useful to replay a test step by step. If you run apirunner with
+
+  VERBOSE=1
+
+the output will contain equivalent curl commands for every test.
+
+== Priority
+
+Priority can be misunderstood, cause it works exactly the other way around as you'd expect it to. Every testcase can (but does not have to) have a priority. If a testcase has'nt, it defaults to 0. The apirunner can be configured to run in a certain priority level like so:
+
+  general:
+    <other stuff>
+    priority: 0
+
+With that configuration it runs every testcase with priority 0, nothing more is run. If you do not configure a priority level in the config/api_runner.yml it defaults to 0 too. If you set the priority to 1 for example, all testcases with the priority level 1 and below (0) are executed. If you make the apirunner run testcases at priority level 4, all testcases with priority level 4 and below (3,2,1,0) are invoked.
+
+That way you can build different layers of your tests and run them just as you like.
+
+== Substitution
+
+We introduced substitution, cause we had to ... Imagine several developers start the apirunner against the same environment. Apirunner A creates a resource via PUT in advance to fire some nice testcases, while another apirunner B started earlier and makes the resource die issuing a DELETE request. Result: some angry developers. Another scenario: You set up a Hudson or any other CI system to prove your API running to your well paying customer. But as it always happens he - as an energetic salesman and perfectly educated computer science specialist - takes a look at you CI in the very moment your top dog dev runs a the whole testsuite for a performace check against the live machines. Result: both runs fails, cause they interfere.
+
+Substitution to the rescue.
+
+  general:
+    <stuff...>
+    substitution:
+      substitutes:
+        - daisyduck
+        - duffyduck
+        - roadrunner
+        - luckyluke
+        - wileecoyote
+      prefix: sweetest_
+
+You can substitute every "string" in your request, not only parts of the url, but the whole stuff that is mentioned in your testcases request section. In the above example every occurance of the substitutes [daisyduck, duffyduck, roadrunner, luckyluke, wileecoyote] is substituted by a prefixed version of the very same string: [sweetest_daisyduck, sweetest_duffyduck, sweetest_roadrunner, sweetest_luckyluke, sweetest_wileecoyote].
+
+Every of your sweet dev's should simply set their own prefix and there should not be any interference afterwards anymore.
+
+== CSV
+
+The most recent apirunner supports performance checks of your API. Would'nt is be nice, if you could record your API's performance in a CSV to make it a graph later? Here we go. Apirunner does so, if you tell him to.
+
+  general:
+    <stuff ...>
+    csv_mode:
+      - append
+      - create
+      - none
+
+The CSV file is created in your Rails app's tmp directory and automatically named after the environment you are running it against. The CSV is generated in an intelligent way so that the deletion of testcases as well as adding some new does not detroy the existing CSV structure. There are three modes that the CSV writer can run in.
+
+*append* - Guess the most used mode, every new testruns data is appended to an already existing CSV file. If none exists yet, it's created on the fly
+*create* - You want only to record the most recent run? Go with "create" and only the last runs data is recorded in the CSV file
+*none* - no arms, no cookies, none disables the creation of CSV files at all
+
+== Excludes
+
+You may also want to define some excludes for some of your environments. Imagine you run your production environment fully cached by Varnish and have some testcases that you cant "priorize out of scope". On the other hand you would like to run the same testsuite against you local development environment. You'll see a lot of errors, cause there is not caching set up on your local box. Here excludes come in and become very handy.
+
+In the excludes files excludes.yml in the test/api_runner directory you can simply mention keys that shall not be evaluated in a certain environment. Example:
+
+  local:
+    excludes:
+      - "max-age"
+  staging:
+    excludes:
+      - "foo"
+      - "bar"
+
+This snipppet makes apirunner drop testcases where there "max-age" occures as a key to be evaluated while checking the responses header but only for your local environment. In the staging environment "foo" and "bar" are not checked. Excludes apply only to header- and body-checks, so they are implemented only in these plugins.
+
+
+== Testing
+
+There are rspec model tests for all classes which can be invoked via:
+
+  rspec spec
+
+== Dependencies
+
+apirunner heavily depends on the following great Gem's:
+
+* nokogiri
+* json
+* aaronh-chronic
+
+== Examples
+
+After invoking:
+
+  rake api:scaffold
+
+you will find some YAML example files for request and expectation generation in test/api_runner. You can create as many story files here as you like, they are executed in the order they are read from the filesystem, so you should name them like 000_create_some_ressource.yml, 001_read_some_ressource.yml and so on.
+
+Alternatively you can place all your stories into one single file. Some examples:
+
+  - name: "001/2: Create new User"
+    request:
+      headers:
+        Content-Type: 'application/json'
+      path:        '/users/duffyduck'
+      method:      'PUT'
+      body:
+        watchlist:
+        - m1035
+        - m2087
+        blacklist:
+        - m1554
+        - m2981
+        skiplist:
+        - m1590
+        - m1056
+        ratings:
+          m12493: 4.0
+          m1875: 2.5
+          m7258: 3.0
+          m7339: 4.0
+          m3642: 5.0
+        expires_at: 2011-09-09T22:41:50+00:00
+    response_expectation:
+      status_code: 201
+      headers:
+        Last-Modified:    /.*/
+      body:
+        username:       'duffyduck'
+        watchlist:
+        - m1035
+        - m2087
+        blacklist:
+        - m1554
+        - m2981
+        skiplist:
+        - m1590
+        - m1056
+        ratings:
+          m12493: 4.0
+          m1875: 2.5
+          m7258: 3.0
+          m7339: 4.0
+          m3642: 5.0
+        fsk:            "18"
+
+This testcase creates a PUT request for the resource /users/duffyduck. It creates a JSON body containung 4 arrays - the users watchlist, blacklist, skiplist and his ratings. These arrays include the values itself.
+
+*name*
+
+The name of you testcase should be unique. Best practise is to give it an unique identifying number. Reason: The name of the testcase is used to generate an identifying hash for the cSV generation. If you do not need the CSV functionality, don't mind.
+
+*request*
+
+In the request section you define everthing that is needed to generate you HTTP(s) request to your api.
+
+*headers*
+
+In the headers section you can declare every header as a key value pair, the value should be a string and such quoted with " or '. If you query a Rails application you should not forget the Content-Type: 'application/json' and you could also mention Accept: 'application/json' as well as any other header key that may be important for your application to query.
+
+Cache-Control headers are accessible through a hash, when you need to test a value of s-maxage from the Cache-Control header:
+
+Cache-Control:public, s-maxage=86400
+
+you can test for it with:
+
+   Cache-Control[s-maxage]: @in one day   # test that s-maxage from Cache-Controll is set to now + one day
+
+Time-test in Caching-Headers can be done with relative time values that can be understood by https://github.com/mojombo/chronic. Testing includes a tolerance of +/- 5 seconds, as the test runs on a real system and you will have some latency. Other possible values are would be
+
+  @tomorrow 4:00am
+  @next_occurence_of 3:00am
+  @in 5 hours
+
+*path*
+
+The path specifies the exact path of the recent resource to query. Keep in mind that this path is added to the protocol+domain+namespace so that the above path for example evaluates to:
+
+  http://staging.moviepilot.de/api1v0/users/duffyduck
+
+*method*
+
+Here you have to mention the HTTP method that is used for your request. Today only typical RESTful actions are supported, these are:
+
+  * POST
+  * GET
+  * PUT
+  * DELETE
+
+*body*
+
+In the body you specify the content you want to send to your API. You can create you nested data in shape of hashes, arrays and single values according to the YAML standard. If you get stuck with it, have a look here: yaml.org (http://www.yaml.org/spec/)
+
+*response_expectation*
+
+When it comes to the response expectation it gets intereresting. The todays integrated plugins allow several checks. These include:
+
+* correctnes of the response body format as JSON
+* the HTTP response code
+* the response header definition
+* the response body definition
+* some chaching related time checks
+
+Header and body definition checks are very interesting, cause they follow a special strategy. Response bodies can become very huge sometimes. And in most cases you are not interested in the whole body, you are only interested in some values to match you expectation. Same applies to the header. Apirunner provides you with exactly that. You can declare the structure of you expected body/header in YAML format and simply omit all the values you are not interested in. But KEEP IN MIND that you have to build at least as much structure that is needed to address the value you are checking.
+
+For example you response body consists of an array of hashes where there only the second hash is of interest for you, and that hash contains an array of hashes itself where the the last hash is of interest, you only had to write something like that:
+
+  responce_expectation:
+    outer_array:
+      inner_array:
+        key_to_be_checked:    "expected value"
+
+The apirunner build a tree structure from both, the response body and your expectation. Then it builds relative pathes for every leave of your expectation tree and uses XPath to find the corresponding leave in the response tree. Then it compares both and applies your matching rules.
+
+Again, have a look at the YAML specification at yaml.org(http://www.yaml.org/spec)
+
+There are three kinds of matching mechanisms:
+
+*structure match*
+
+Structure matches are written directly in YAML and look like so for example:
+
+  response_expectation:
+    body:
+      watchlist:
+      - m1035
+      - m2087
+      blacklist:
+      - m1554
+      - m2981
+      skiplist:
+      - m1590
+      - m1056
+
+*string match*
+
+String matches give you the possibility to check a certain key like so:
+
+  response_expectation:
+    body:
+      username:       'duffyduck'
+
+Strings can be quoted either using ' or ".
+
+*regular expressions*
+
+*status_code*
+
+*headers*
+
+*body*
+
+== Authors
+
+apirunner was written by:
+
+*Jan* *Roesner* (http://railspotting.de) (jan@roesner.it)
+
+for the great guy's at moviepilot.com (http://www.moviepilot.com)
+
+With support from:
+
+*Daniel* *Bornkessel* (daniel@moviepilot.com)
+
+and the *moviepilot* *dev-team* (developers@moviepilot.com)
+
+== Note on Patches/Pull Requests
+
+* Fork the project.
+* Make your feature addition or bug fix.
+* Add tests for it. This is important so I don't break it in a
+  future version unintentionally.
+* Commit, do not mess with rakefile, version, or history.
+  (if you want to have your own version, that is fine but bump version in a commit by itself I can ignore when I pull)
+* Send me a pull request. Bonus points for topic branches.
+
+== Copyright
+
+Copyright (c) 2010 moviepilot. See LICENSE for details.
